@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>⚡️ Quiz Master ⚡️</title>
+    <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="theme-default">
+    <div class="background-animation"></div>
+    <div class="container">
+        <h1 class="title-glow">⚡️ Quiz Master ⚡️</h1>
+
+        <div id="home-screen" class="card fade-in">
+            <h2 class="card-title">Ready for the Ultimate Quiz?</h2>
+            <div class="option-box">
+                <h3>Host a New Game</h3>
+                <p>Create your own quiz session and be the master!</p>
+                <button id="create-btn" class="btn-primary">Create Game</button>
+            </div>
+            <div class="option-box">
+                <h3>Join a Game</h3>
+                <input type="text" id="game-id-input" class="input-field" placeholder="Enter Game Code (e.g., ABCDEF)" maxlength="6" />
+                <input type="text" id="player-name-input" class="input-field" placeholder="Your Awesome Name" maxlength="20" />
+                <button id="join-btn" class="btn-primary">Join Game</button>
+            </div>
+            <div class="option-box">
+                <h3>Monitor a Game</h3>
+                <p>Watch the action live without playing!</p>
+                <input type="text" id="monitor-game-id-input" class="input-field" placeholder="Enter Game Code to Monitor" maxlength="6" />
+                <button id="monitor-btn" class="btn-secondary">Monitor Game</button>
+            </div>
+        </div>
+
+        <div id="host-lobby-screen" class="hidden card slide-in">
+            <h2 class="card-title">Quiz Lobby (Host)</h2>
+            <div class="game-code-display">
+                Your Game Code: <span id="host-game-code" class="code-highlight"></span>
+            </div>
+            <div class="player-list-container">
+                <h3>Players Joined: <span id="player-count">0</span></h3>
+                <ul id="host-players-list" class="list-glow"></ul>
+            </div>
+            <button id="host-start-btn" class="btn-primary" disabled>Start Game (Waiting for Players)</button>
+        </div>
+
+        <div id="host-question-screen" class="hidden card slide-in">
+            <div class="question-header">
+                <span id="host-question-number" class="question-count">Question X/Y</span>
+                <span class="timer-display" id="host-timer-display"><span id="host-time-left">60</span>s</span>
+            </div>
+            <h2 id="host-question-text" class="question-text"></h2>
+            <div class="host-options-container">
+                <p>Options:</p>
+                <ul id="host-answers-list" class="option-list"></ul>
+            </div>
+            <div class="player-answers-summary">
+                <h3>Live Player Answers:</h3>
+                <ul id="host-player-answers-list" class="list-summary"></ul>
+            </div>
+            <div class="host-action-buttons">
+                <button id="host-next-btn" class="btn-primary">Next Question</button>
+                <button id="host-show-leaderboard-btn" class="btn-secondary">Show Leaderboard</button>
+            </div>
+        </div>
+        
+        <div id="host-leaderboard-screen" class="hidden card slide-in">
+            <h2 class="card-title">Leaderboard</h2>
+            <div id="host-leaderboard" class="leaderboard-display"></div>
+            <button id="host-continue-btn" class="btn-primary">Continue</button>
+        </div>
+        
+        <div id="host-game-over-screen" class="hidden card slide-in">
+            <h2 class="card-title">Game Over! Final Results!</h2>
+            <div id="host-final-leaderboard" class="leaderboard-display"></div>
+            <button id="host-new-game-btn" class="btn-secondary">Start a New Game</button>
+        </div>
+
+        <div id="player-waiting-screen" class="hidden card slide-in">
+            <h2 class="card-title">Waiting for the Host to Start...</h2>
+            <p class="player-info">Your Name: <span id="player-display-name" class="info-highlight"></span></p>
+            <p class="player-info">Game Code: <span id="player-display-game-code" class="info-highlight"></span></p>
+            <div class="loader-container"><div class="loader"></div></div>
+            <p>Get ready for an epic quiz!</p>
+        </div>
+
+        <div id="player-question-screen" class="hidden card slide-in">
+            <div class="question-header">
+                <span id="player-question-number" class="question-count">Question X/Y</span>
+                <span class="timer-display" id="player-timer-display"><span id="player-time-left">60</span>s</span>
+            </div>
+            <div class="question-container">
+                <h2 id="player-question-text" class="question-text"></h2>
+                <div id="player-options-container" class="options-grid"></div>
+            </div>
+            <div id="player-feedback" class="feedback hidden"></div>
+        </div>
+
+        <div id="player-leaderboard-screen" class="hidden card slide-in">
+            <h2 class="card-title">Leaderboard</h2>
+            <div id="player-leaderboard" class="leaderboard-display"></div>
+        </div>
+
+        <div id="player-game-over-screen" class="hidden card slide-in">
+            <h2 class="card-title">Game Over! Your Final Rank!</h2>
+            <div id="player-final-leaderboard" class="leaderboard-display"></div>
+            <button id="player-new-game-btn" class="btn-secondary">Play Again!</button>
+        </div>
+
+        <div id="monitor-screen" class="hidden card slide-in">
+            <h2 class="card-title">Monitoring Game: <span id="monitor-game-code-display" class="code-highlight"></span></h2>
+            <div class="monitor-stats">
+                <p>Status: <span id="monitor-game-status"></span></p>
+                <p>Question: <span id="monitor-question-info"></span></p>
+                <p class="timer-display" id="monitor-timer-display"><span id="monitor-time-left">--</span>s</p>
+            </div>
+            <div id="monitor-player-list">
+                <h3>Live Player Scores & Status:</h3>
+                <div id="monitor-leaderboard" class="leaderboard-display"></div>
+            </div>
+            <button id="monitor-home-btn" class="btn-secondary">Back to Home</button>
+        </div>
+
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        // UI elements mappings
+        const ui = {
+            home: document.getElementById('home-screen'),
+            createBtn: document.getElementById('create-btn'),
+            gameIdInput: document.getElementById('game-id-input'),
+            playerNameInput: document.getElementById('player-name-input'),
+            joinBtn: document.getElementById('join-btn'),
+            monitorGameIdInput: document.getElementById('monitor-game-id-input'),
+            monitorBtn: document.getElementById('monitor-btn'),
+
+            hostLobby: document.getElementById('host-lobby-screen'),
+            hostGameCode: document.getElementById('host-game-code'),
+            hostPlayersList: document.getElementById('host-players-list'),
+            hostPlayerCount: document.getElementById('player-count'),
+            hostStartBtn: document.getElementById('host-start-btn'),
+            hostQuestion: document.getElementById('host-question-screen'),
+            hostQNum: document.getElementById('host-question-number'),
+            hostQTxt: document.getElementById('host-question-text'),
+            hostAnswersList: document.getElementById('host-answers-list'),
+            hostTimerDisplay: document.getElementById('host-timer-display'),
+            hostTimeLeft: document.getElementById('host-time-left'),
+            hostNextBtn: document.getElementById('host-next-btn'),
+            hostShowLbBtn: document.getElementById('host-show-leaderboard-btn'),
+            hostPlayerAnswers: document.getElementById('host-player-answers-list'),
+            hostLeaderboard: document.getElementById('host-leaderboard-screen'),
+            hostLbDisplay: document.getElementById('host-leaderboard'),
+            hostContBtn: document.getElementById('host-continue-btn'),
+            hostGameOver: document.getElementById('host-game-over-screen'),
+            hostFinalLb: document.getElementById('host-final-leaderboard'),
+            hostNewGameBtn: document.getElementById('host-new-game-btn'),
+
+            playerWaiting: document.getElementById('player-waiting-screen'),
+            playerDisplayName: document.getElementById('player-display-name'),
+            playerDisplayGameCode: document.getElementById('player-display-game-code'),
+            playerQuestion: document.getElementById('player-question-screen'),
+            playerQNum: document.getElementById('player-question-number'),
+            playerQTxt: document.getElementById('player-question-text'),
+            playerOptionsContainer: document.getElementById('player-options-container'),
+            playerFeedback: document.getElementById('player-feedback'),
+            playerTimerDisplay: document.getElementById('player-timer-display'),
+            playerTimeLeft: document.getElementById('player-time-left'),
+            playerLeaderboard: document.getElementById('player-leaderboard-screen'),
+            playerLbDisplay: document.getElementById('player-leaderboard'),
+            playerGameOver: document.getElementById('player-game-over-screen'),
+            playerFinalLb: document.getElementById('player-final-leaderboard'),
+            playerNewGameBtn: document.getElementById('player-new-game-btn'),
+
+            monitorScreen: document.getElementById('monitor-screen'),
+            monitorGameCodeDisplay: document.getElementById('monitor-game-code-display'),
+            monitorGameStatus: document.getElementById('monitor-game-status'),
+            monitorQuestionInfo: document.getElementById('monitor-question-info'),
+            monitorLeaderboard: document.getElementById('monitor-leaderboard'),
+            monitorHomeBtn: document.getElementById('monitor-home-btn'),
+            monitorTimerDisplay: document.getElementById('monitor-timer-display'),
+            monitorTimeLeft: document.getElementById('monitor-time-left')
+        };
+
+        // Global state variables
+        let gameId = localStorage.getItem('gameId');
+        let playerName = localStorage.getItem('playerName');
+        let isHost = localStorage.getItem('isHost') === 'true';
+        let isMonitoring = localStorage.getItem('isMonitoring') === 'true';
+
+        let currentPlayersInLobby = {}; // For host to track players
+        
+        // --- UI State Management ---
+        function showScreen(screenToShow) {
+            const allScreens = [
+                ui.home, ui.hostLobby, ui.hostQuestion, ui.hostLeaderboard, ui.hostGameOver,
+                ui.playerWaiting, ui.playerQuestion, ui.playerLeaderboard, ui.playerGameOver,
+                ui.monitorScreen
+            ];
+
+            allScreens.forEach(screen => {
+                if (screen === screenToShow) {
+                    // Remove hidden, apply slide-in, then remove slide-out
+                    screen.classList.remove('hidden', 'fade-out', 'slide-out');
+                    screen.classList.add('slide-in');
+                    // Ensure opacity starts at 0 for fadeIn on newly shown elements
+                    screen.style.opacity = '0';
+                    setTimeout(() => {
+                        screen.style.opacity = '1';
+                    }, 10); // Small delay to allow style to apply before transition
+                } else {
+                    // Apply fade-out/slide-out, then add hidden
+                    screen.classList.add('fade-out');
+                    screen.classList.remove('slide-in'); // Ensure it's not trying to slide-in when fading out
+                    setTimeout(() => {
+                        screen.classList.add('hidden');
+                        screen.classList.remove('fade-out', 'slide-out'); // Clean up animation classes
+                    }, 500); // Wait for fade-out to complete
+                }
+            });
+        }
+
+        function applyPlayerTheme(pName) {
+            const body = document.body;
+            body.classList.remove('theme-default', 'theme-red', 'theme-yellow', 'theme-green', 'theme-blue');
+
+            if (!pName) {
+                body.classList.add('theme-default');
+                return;
+            }
+
+            switch (pName.toLowerCase()) {
+                case 'team 1':
+                    body.classList.add('theme-red');
+                    break;
+                case 'team 2':
+                    body.classList.add('theme-yellow');
+                    break;
+                case 'team 3':
+                    body.classList.add('theme-green');
+                    break;
+                case 'team 4':
+                    body.classList.add('theme-blue');
+                    break;
+                default:
+                    body.classList.add('theme-default');
+                    break;
+            }
+        }
+
+
+        function showHome() {
+            gameId = null;
+            playerName = null;
+            isHost = false;
+            isMonitoring = false;
+            localStorage.removeItem('gameId');
+            localStorage.removeItem('playerName');
+            localStorage.removeItem('isHost');
+            localStorage.removeItem('isMonitoring');
+
+            applyPlayerTheme(null);
+            showScreen(ui.home);
+            ui.gameIdInput.value = '';
+            ui.playerNameInput.value = '';
+            ui.monitorGameIdInput.value = '';
+        }
+
+        function showHostLobby(gId) {
+            gameId = gId;
+            isHost = true;
+            isMonitoring = false;
+            localStorage.setItem('gameId', gId);
+            localStorage.setItem('isHost', 'true');
+            localStorage.setItem('isMonitoring', 'false');
+            ui.hostGameCode.textContent = gId;
+            updateHostLobby();
+            showScreen(ui.hostLobby);
+        }
+
+        function showHostQuestion(data) {
+            ui.hostQNum.textContent = `Question ${data.questionNumber}/${data.totalQuestions}`;
+            ui.hostQTxt.textContent = data.question;
+            ui.hostAnswersList.innerHTML = '';
+            ui.hostPlayerAnswers.innerHTML = ''; // Clear player answers from previous question
+            data.options.forEach(option => {
+                const li = document.createElement('li');
+                li.textContent = option;
+                ui.hostAnswersList.append(li);
+            });
+            ui.hostTimerDisplay.classList.remove('hidden');
+            showScreen(ui.hostQuestion);
+        }
+
+        function showHostLeaderboard(leaderboardData) {
+            updateLeaderboardDisplay(ui.hostLbDisplay, leaderboardData);
+            ui.hostTimerDisplay.classList.add('hidden');
+            showScreen(ui.hostLeaderboard);
+        }
+
+        function showHostGameOver(leaderboardData) {
+            updateLeaderboardDisplay(ui.hostFinalLb, leaderboardData);
+            ui.hostTimerDisplay.classList.add('hidden');
+            showScreen(ui.hostGameOver);
+        }
+
+        function showPlayerWaiting(gId, pName) {
+            gameId = gId;
+            playerName = pName;
+            isHost = false;
+            isMonitoring = false;
+            localStorage.setItem('gameId', gId);
+            localStorage.setItem('playerName', pName);
+            localStorage.setItem('isHost', 'false');
+            localStorage.setItem('isMonitoring', 'false');
+            ui.playerDisplayName.textContent = pName;
+            ui.playerDisplayGameCode.textContent = gId;
+            applyPlayerTheme(pName);
+            showScreen(ui.playerWaiting);
+        }
+
+        let hasAnswered = false;
+        function showPlayerQuestion(data) {
+            hasAnswered = false;
+            ui.playerQNum.textContent = `Question ${data.questionNumber}/${data.totalQuestions}`;
+            ui.playerQTxt.textContent = data.question;
+            ui.playerOptionsContainer.innerHTML = '';
+            data.options.forEach(option => {
+                const button = document.createElement('button');
+                button.className = 'option-btn glow-on-hover';
+                button.textContent = option;
+                button.addEventListener('click', () => {
+                    if (!hasAnswered) {
+                        selectAnswer(option);
+                    }
+                });
+                ui.playerOptionsContainer.appendChild(button);
+            });
+            ui.playerFeedback.classList.add('hidden');
+            ui.playerFeedback.textContent = '';
+            ui.playerTimerDisplay.classList.remove('hidden');
+            showScreen(ui.playerQuestion);
+        }
+
+        function showPlayerLeaderboard(leaderboardData) {
+            updateLeaderboardDisplay(ui.playerLbDisplay, leaderboardData);
+            ui.playerTimerDisplay.classList.add('hidden');
+            showScreen(ui.playerLeaderboard);
+        }
+
+        function showPlayerGameOver(leaderboardData) {
+            updateLeaderboardDisplay(ui.playerFinalLb, leaderboardData);
+            ui.playerTimerDisplay.classList.add('hidden');
+            showScreen(ui.playerGameOver);
+        }
+
+        function showMonitorScreen(gId) {
+            gameId = gId;
+            isMonitoring = true;
+            isHost = false;
+            playerName = null;
+            localStorage.setItem('gameId', gId);
+            localStorage.setItem('isMonitoring', 'true');
+            localStorage.setItem('isHost', 'false');
+            localStorage.removeItem('playerName');
+            ui.monitorGameCodeDisplay.textContent = gId;
+            ui.monitorTimerDisplay.classList.remove('hidden');
+            showScreen(ui.monitorScreen);
+        }
+
+        function updateLeaderboardDisplay(element, leaderboard) {
+            element.innerHTML = '';
+            leaderboard.forEach((player, index) => {
+                const div = document.createElement('div');
+                div.className = 'leaderboard-item';
+                div.innerHTML = `
+                    <span class="rank">${index + 1}.</span>
+                    <span class="name">${player.name}</span>
+                    <span class="score">${player.score} pts</span>
+                `;
+                element.appendChild(div);
+            });
+        }
+
+
+        // --- Initial Load Logic (Reconnection) ---
+        socket.on('connect', () => {
+            console.log('Socket connected:', socket.id);
+            if (gameId) {
+                if (isHost) {
+                    socket.emit('reconnectHost', gameId);
+                } else if (isMonitoring) {
+                    // Monitor needs to actively request data after connecting
+                    socket.emit('monitorGame', gameId);
+                    showMonitorScreen(gameId); // Show monitor screen immediately, data will follow
+                } else if (playerName) {
+                    socket.emit('reconnectPlayer', { gameId, playerName });
+                } else {
+                    showHome();
+                }
+            } else {
+                showHome();
+            }
+        });
+
+        // --- Host Specific Functions ---
+        function updateHostLobby() {
+            ui.hostPlayersList.innerHTML = '';
+            const playerNames = Object.values(currentPlayersInLobby);
+            playerNames.forEach(name => {
+                const li = document.createElement('li');
+                li.textContent = name;
+                ui.hostPlayersList.append(li);
+            });
+            ui.hostPlayerCount.textContent = playerNames.length;
+            ui.hostStartBtn.disabled = !playerNames.length;
+            ui.hostStartBtn.textContent = playerNames.length > 0 ? 'Start Game' : 'Waiting for Players';
+        }
+
+        // --- Event Listeners ---
+        ui.createBtn.addEventListener("click", () => {
+            socket.emit("createGame");
+        });
+
+        ui.joinBtn.addEventListener("click", () => {
+            const enteredGameId = ui.gameIdInput.value.toUpperCase();
+            const enteredPlayerName = ui.playerNameInput.value.trim();
+
+            if (enteredGameId && enteredPlayerName) {
+                socket.emit("joinGame", { gameId: enteredGameId, playerName: enteredPlayerName });
+            } else {
+                alert("Please enter both game code and your name.");
+            }
+        });
+
+        ui.monitorBtn.addEventListener("click", () => {
+            const enteredGameId = ui.monitorGameIdInput.value.toUpperCase();
+            if (enteredGameId) {
+                socket.emit("monitorGame", enteredGameId);
+                // The screen will be shown by socket.on('monitoringData') after initial data is received
+            } else {
+                alert("Please enter a game code to monitor.");
+            }
+        });
+
+        ui.hostStartBtn.onclick = () => socket.emit('startGame', gameId);
+        ui.hostNextBtn.onclick = () => socket.emit('nextQuestion', gameId);
+        ui.hostShowLbBtn.onclick = () => socket.emit('showLeaderboard', gameId);
+        ui.hostContBtn.onclick = () => socket.emit('nextQuestion', gameId);
+        ui.hostNewGameBtn.onclick = () => showHome();
+        ui.playerNewGameBtn.onclick = () => showHome();
+        ui.monitorHomeBtn.onclick = () => showHome();
+
+
+        // --- Socket Event Handlers ---
+
+        // General Error
+        socket.on('error', (message) => {
+            alert(message);
+            showHome();
+        });
+
+        // Host Events
+        socket.on("gameCreated", (gId) => {
+            console.log("Game created, redirecting to host lobby:", gId);
+            showHostLobby(gId);
+            currentPlayersInLobby = {};
+            updateHostLobby();
+        });
+
+        socket.on('reconnectedAsHost', ({ gameId: gId, gameData, currentQuestionData, timeLeft }) => {
+            console.log('Reconnected as host to game:', gId, gameData);
+            gameId = gId;
+            isHost = true;
+            isMonitoring = false;
+            localStorage.setItem('gameId', gId);
+            localStorage.setItem('isHost', 'true');
+            localStorage.setItem('isMonitoring', 'false');
+
+            currentPlayersInLobby = {};
+            gameData.players.forEach(p => {
+                // Only add player to lobby if their socket is currently connected (to avoid stale entries)
+                if (socket.io.sockets.has(p.socketId)) {
+                     currentPlayersInLobby[p.name] = p.name;
+                }
+            });
+            updateHostLobby();
+
+            if (gameData.isStarted) {
+                if (gameData.gamePhase === 'question' && currentQuestionData) {
+                    showHostQuestion(currentQuestionData);
+                    ui.hostTimeLeft.textContent = timeLeft;
+                } else if (gameData.gamePhase === 'leaderboard' || gameData.gamePhase === 'game_over') {
+                    // Re-request leaderboard data to ensure consistency on reconnect
+                    socket.emit('showLeaderboard', gameId); 
+                } else {
+                    showHostLobby(gId); // Fallback if game is started but phase is unknown
+                }
+            } else {
+                showHostLobby(gId);
+            }
+        });
+
+        socket.on('playerJoined', ({ playerId, playerName }) => {
+            currentPlayersInLobby[playerId] = playerName;
+            updateHostLobby();
+        });
+
+        socket.on('playerLeft', (playerName) => {
+            delete currentPlayersInLobby[playerName];
+            updateHostLobby();
+        });
+        
+        socket.on('gameStarted', () => {
+             // Host will receive newQuestion event next
+        });
+
+        socket.on('newQuestion', (data) => {
+            if (isHost) {
+                showHostQuestion(data);
+            } else if (!isMonitoring) {
+                showPlayerQuestion(data);
+            }
+        });
+
+        socket.on('questionTimerUpdate', (timeLeft) => {
+            if (isHost) {
+                ui.hostTimeLeft.textContent = timeLeft;
+            } else if (!isMonitoring) {
+                ui.playerTimeLeft.textContent = timeLeft;
+            }
+        });
+
+        socket.on('playerAnswered', ({ playerName: pName, correct, answer, score, timeTaken }) => {
+            if (isHost) {
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="player-name">${pName}</span> answered: <span class="${correct ? 'correct-text' : 'incorrect-text'}">${answer}</span> in <span class="time-taken">${timeTaken.toFixed(1)}s</span> (Score: <span class="score-display">${score}</span>)`;
+                ui.hostPlayerAnswers.appendChild(li);
+                ui.hostPlayerAnswers.scrollTop = ui.hostPlayerAnswers.scrollHeight;
+            }
+        });
+
+        socket.on('leaderboardUpdate', (data) => {
+            if (isHost) {
+                showHostLeaderboard(data.leaderboard);
+            } else if (!isMonitoring) {
+                showPlayerLeaderboard(data.leaderboard);
+            }
+        });
+
+        socket.on('gameOver', (data) => {
+            if (isHost) {
+                showHostGameOver(data.leaderboard);
+            } else if (!isMonitoring) {
+                showPlayerGameOver(data.leaderboard);
+            }
+        });
+
+        socket.on('hostLeft', () => {
+            alert('The host has left the game. Returning to home.');
+            showHome();
+        });
+
+
+        // Player Events
+        function selectAnswer(answer) {
+            hasAnswered = true;
+            socket.emit('submitAnswer', { gameId, answer });
+
+            const optionButtons = document.querySelectorAll('#player-options-container .option-btn');
+            optionButtons.forEach(button => {
+                button.disabled = true;
+                button.classList.remove('glow-on-hover');
+                if (button.textContent === answer) {
+                    button.classList.add('selected-answer');
+                }
+            });
+        }
+
+        socket.on("gameJoined", ({ gameId: gId, isHost: isH, gameStarted }) => {
+            console.log("Game joined, isHost:", isH, "Game Started:", gameStarted);
+            gameId = gId;
+            isHost = isH;
+            isMonitoring = false;
+            localStorage.setItem('gameId', gId);
+            localStorage.setItem('playerName', playerName);
+            localStorage.setItem('isHost', isH.toString());
+            localStorage.setItem('isMonitoring', 'false');
+
+            showPlayerWaiting(gId, playerName); // Always show waiting screen on initial join
+        });
+
+        socket.on('reconnectedAsPlayer', ({ gameId: gId, playerName: pName, gameData, currentQuestionData, timeLeft }) => {
+            console.log('Reconnected as player to game:', gId, pName, gameData);
+            gameId = gId;
+            playerName = pName;
+            isHost = false;
+            isMonitoring = false;
+            localStorage.setItem('gameId', gId);
+            localStorage.setItem('playerName', pName);
+            localStorage.setItem('isHost', 'false');
+            localStorage.setItem('isMonitoring', 'false');
+            applyPlayerTheme(pName);
+
+            if (gameData.isStarted) {
+                if (gameData.gamePhase === 'question' && currentQuestionData) {
+                    showPlayerQuestion(currentQuestionData);
+                    ui.playerTimeLeft.textContent = timeLeft;
+                    // If player already answered, disable options
+                    if (gameData.currentQuestionIndex === (currentQuestionData.questionNumber - 1) &&
+                        gameData.players && gameData.players[pName] && gameData.players[pName].answeredQuestion === gameData.currentQuestionIndex) {
+                        document.querySelectorAll('#player-options-container .option-btn').forEach(button => {
+                            button.disabled = true;
+                            button.classList.remove('glow-on-hover');
+                        });
+                        ui.playerFeedback.classList.remove('hidden');
+                        ui.playerFeedback.textContent = 'You have already answered this question.';
+                        ui.playerFeedback.className = 'feedback feedback-info'; // New info style
+                    }
+                } else if (gameData.gamePhase === 'leaderboard') {
+                    socket.emit('showLeaderboard', gameId);
+                } else if (gameData.gamePhase === 'game_over') {
+                    socket.emit('showLeaderboard', gameId);
+                } else {
+                    showPlayerWaiting(gId, pName);
+                }
+            } else {
+                showPlayerWaiting(gId, pName);
+            }
+        });
+
+        socket.on('answerResult', (data) => {
+            ui.playerFeedback.classList.remove('hidden');
+            if (data.correct) {
+                ui.playerFeedback.innerHTML = `Correct! You got <span class="points-awarded">${data.points}</span> points! 🎉`;
+                ui.playerFeedback.className = 'feedback feedback-correct';
+            } else {
+                ui.playerFeedback.innerHTML = `Incorrect. The correct answer was: "<span class="correct-answer-text">${data.correctAnswer}</span>" 😔`;
+                ui.playerFeedback.className = 'feedback feedback-incorrect';
+            }
+
+            const optionButtons = document.querySelectorAll('#player-options-container .option-btn');
+            optionButtons.forEach(button => {
+                button.disabled = true;
+                button.classList.remove('glow-on-hover');
+                if (button.textContent === data.correctAnswer) {
+                    button.classList.add('correct-answer-highlight');
+                }
+            });
+        });
+
+        // Monitor Events
+        socket.on('monitoringData', (data) => {
+            if (isMonitoring && data.gameId === gameId) {
+                showMonitorScreen(gameId); // Ensure screen is shown
+
+                ui.monitorGameStatus.textContent = data.isStarted ? 'In Progress' : 'Lobby';
+                ui.monitorQuestionInfo.textContent = data.isStarted ?
+                    `Question ${data.currentQuestion + 1}/${data.totalQuestions}` + (data.questionText ? `: ${data.questionText}` : '') :
+                    'Waiting for game to start';
+                
+                if (data.gamePhase === 'question' || data.gamePhase === 'leaderboard') { // Show timer also in leaderboard phase to indicate transition
+                    ui.monitorTimerDisplay.classList.remove('hidden');
+                } else {
+                    ui.monitorTimerDisplay.classList.add('hidden');
+                    ui.monitorTimeLeft.textContent = '--';
+                }
+
+                ui.monitorLeaderboard.innerHTML = '';
+                data.players.forEach((player, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'leaderboard-item monitor-leaderboard-item'; // Add specific class for monitor
+                    div.innerHTML = `
+                        <span class="rank">${index + 1}.</span>
+                        <span class="name">${player.name}</span>
+                        <span class="score">${player.score} pts</span>
+                        <span class="status ${player.isConnected ? (player.answeredCurrentQuestion ? 'status-answered' : 'status-waiting') : 'status-disconnected'}">
+                            ${player.isConnected ? (player.answeredCurrentQuestion ? 'Answered' : 'Waiting') : 'Disconnected'}
+                        </span>
+                    `;
+                    ui.monitorLeaderboard.appendChild(div);
+                });
+            }
+        });
+
+        socket.on('monitorTimerUpdate', (data) => {
+            if (isMonitoring && data.gameId === gameId) {
+                ui.monitorTimeLeft.textContent = data.timeLeft;
+            }
+        });
+
+        // Initialize display based on localStorage state (handled on socket.on('connect'))
+        // No explicit call needed here, as connect handler will manage initial state.
+    </script>
+</body>
+</html>
