@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👑 Host Dashboard - QuizMaster Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pastel-pink: #FFB3D9;
+            --pastel-blue: #B3D9FF;
+            --pastel-green: #B3FFD9;
+            --pastel-yellow: #FFD9B3;
+            --pastel-purple: #D9B3FF;
+            --pastel-coral: #FFB3B3;
+        }
+        
+        * { font-family: 'Poppins', sans-serif; }
+        
+        body {
+            background: linear-gradient(135deg, 
+                var(--pastel-purple) 0%, 
+                var(--pastel-pink) 50%, 
+                var(--pastel-blue) 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 20s ease infinite;
+            min-height: 100vh;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .control-button {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .control-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        }
+        
+        .control-button:active {
+            transform: translateY(-1px);
+        }
+        
+        .pulse-ring {
+            animation: pulseRing 2s infinite;
+        }
+        
+        @keyframes pulseRing {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        
+        .leaderboard-item {
+            animation: slideInLeft 0.5s ease-out;
+            transition: all 0.3s ease;
+        }
+        
+        .leaderboard-item:hover {
+            transform: translateX(10px);
+            background: rgba(255, 255, 255, 0.4);
+        }
+        
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .room-code-display {
+            background: linear-gradient(45deg, var(--pastel-yellow), var(--pastel-green));
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
+            to { box-shadow: 0 0 40px rgba(255, 215, 0, 0.6); }
+        }
+        
+        .floating-crown {
+            animation: float 4s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(5deg); }
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .status-active { background: #4ade80; animation: pulse 2s infinite; }
+        .status-waiting { background: #fbbf24; }
+        .status-ended { background: #f87171; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .player-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--pastel-pink), var(--pastel-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .question-preview {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        
+        .question-preview.expanded {
+            max-height: 200px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="glass-card mx-4 mt-4 rounded-3xl p-4">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <div class="text-3xl floating-crown">👑</div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">Host Dashboard</h1>
+                    <p class="text-gray-600">Control your quiz session</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button onclick="goHome()" class="px-4 py-2 bg-white/30 hover:bg-white/40 rounded-xl text-gray-700 font-medium transition-all">
+                    🏠 Home
+                </button>
+                <div class="text-right">
+                    <div class="text-sm text-gray-600">Room Status</div>
+                    <div class="flex items-center">
+                        <span class="status-indicator status-waiting" id="room-status-indicator"></span>
+                        <span class="font-medium text-gray-800" id="room-status-text">Waiting</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-6">
+        <!-- Room Info Section -->
+        <div class="grid md:grid-cols-3 gap-6 mb-8">
+            <!-- Room Code Card -->
+            <div class="glass-card rounded-3xl p-6 text-center">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">🔗 Room Code</h3>
+                <div class="room-code-display text-4xl font-bold text-gray-800 py-4 px-6 rounded-2xl mb-4" id="room-code-display">
+                    ----
+                </div>
+                <button onclick="copyRoomCode()" class="control-button bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-xl">
+                    📋 Copy Code
+                </button>
+            </div>
+
+            <!-- Players Count -->
+            <div class="glass-card rounded-3xl p-6 text-center">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">👥 Players</h3>
+                <div class="text-5xl font-bold text-purple-600 mb-2" id="player-count">0</div>
+                <div class="text-gray-600">Connected Players</div>
+                <div class="mt-4">
+                    <div class="text-sm text-gray-600">Max: <span id="max-players">50</span></div>
+                </div>
+            </div>
+
+            <!-- Quiz Progress -->
+            <div class="glass-card rounded-3xl p-6 text-center">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 Progress</h3>
+                <div class="text-3xl font-bold text-green-600 mb-2">
+                    <span id="current-question">0</span>/<span id="total-questions">0</span>
+                </div>
+                <div class="text-gray-600 mb-4">Questions</div>
+                <div class="w-full bg-white/30 rounded-full h-3">
+                    <div class="bg-gradient-to-r from-green-400 to-blue-500 h-3 rounded-full transition-all duration-500" 
+                         id="progress-bar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="grid md:grid-cols-2 gap-8 mb-8">
+            <!-- Quiz Controls -->
+            <div class="glass-card rounded-3xl p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                    🎮 Quiz Controls
+                </h3>
+                
+                <div class="space-y-4">
+                    <button onclick="createRoom()" id="create-room-btn" 
+                            class="control-button w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-4 px-6 rounded-2xl text-lg">
+                        🚀 Create New Room
+                    </button>
+                    
+                    <button onclick="startQuiz()" id="start-quiz-btn" disabled
+                            class="control-button w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-bold py-4 px-6 rounded-2xl text-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                        ▶️ Start Quiz
+                    </button>
+                    
+                    <button onclick="nextQuestion()" id="next-question-btn" disabled
+                            class="control-button w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-4 px-6 rounded-2xl text-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                        ⏭️ Next Question
+                    </button>
+                    
+                    <button onclick="showLeaderboard()" id="show-leaderboard-btn" disabled
+                            class="control-button w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold py-4 px-6 rounded-2xl text-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                        🏆 Show Leaderboard
+                    </button>
+                </div>
+            </div>
+
+            <!-- Settings Panel -->
+            <div class="glass-card rounded-3xl p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-6">⚙️ Settings</h3>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">⏱️ Question Timer (seconds)</label>
+                        <input type="range" id="timer-slider" min="5" max="60" value="15" 
+                               class="w-full h-2 bg-white/30 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-sm text-gray-600 mt-1">
+                            <span>5s</span>
+                            <span id="timer-value" class="font-bold">15s</span>
+                            <span>60s</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <label class="text-gray-700 font-medium">🏆 Auto Leaderboard</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="auto-leaderboard" class="sr-only peer">
+                            <div class="w-11 h-6 bg-white/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-purple-500 peer-checked:to-pink-500"></div>
+                        </label>
+                    </div>
+                    
+                    <button onclick="updateSettings()" 
+                            class="control-button w-full bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-medium py-3 px-6 rounded-xl">
+                        💾 Update Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Data Section -->
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- Connected Players -->
+            <div class="glass-card rounded-3xl p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center justify-between">
+                    👥 Connected Players
+                    <span class="text-sm font-normal bg-white/30 px-3 py-1 rounded-full" id="players-count-badge">0</span>
+                </h3>
+                
+                <div id="players-list" class="space-y-3 max-h-80 overflow-y-auto">
+                    <div class="text-center text-gray-500 py-8">
+                        <div class="text-4xl mb-2">👻</div>
+                        <p>No players yet. Share the room code!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Leaderboard -->
+            <div class="glass-card rounded-3xl p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center justify-between">
+                    🏆 Live Leaderboard
+                    <button onclick="refreshLeaderboard()" class="text-sm bg-white/30 hover:bg-white/40 px-3 py-1 rounded-full transition-all">
+                        🔄 Refresh
+                    </button>
+                </h3>
+                
+                <div id="leaderboard-list" class="space-y-3 max-h-80 overflow-y-auto">
+                    <div class="text-center text-gray-500 py-8">
+                        <div class="text-4xl mb-2">🏁</div>
+                        <p>Start the quiz to see rankings!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Question Preview -->
+        <div class="glass-card rounded-3xl p-6 mt-8" id="question-preview-card" style="display: none;">
+            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center justify-between">
+                📝 Current Question
+                <button onclick="toggleQuestionPreview()" class="text-sm bg-white/30 hover:bg-white/40 px-3 py-1 rounded-full transition-all">
+                    👁️ Toggle
+                </button>
+            </h3>
+            
+            <div class="question-preview" id="question-preview">
+                <div class="bg-white/20 rounded-2xl p-6">
+                    <div class="text-lg font-semibold text-gray-800 mb-4" id="preview-question-text">
+                        Question will appear here...
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-3" id="preview-options">
+                        <!-- Options will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let roomCode = null;
+        let isHost = false;
+        let currentRoom = null;
+        let totalQuestions = 0;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initSocket();
+            setupEventListeners();
+        });
+
+        function initSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('🟢 Connected to server');
+            });
+            
+            socket.on('roomCreated', (data) => {
+                roomCode = data.code;
+                totalQuestions = data.totalQuestions || 0;
+                isHost = true;
+                
+                document.getElementById('room-code-display').textContent = roomCode;
+                document.getElementById('total-questions').textContent = totalQuestions;
+                document.getElementById('create-room-btn').disabled = true;
+                document.getElementById('create-room-btn').textContent = '✅ Room Created';
+                document.getElementById('start-quiz-btn').disabled = false;
+                
+                updateRoomStatus('waiting');
+                showNotification(`Room ${roomCode} created successfully!`, 'success');
+            });
+            
+            socket.on('state', (roomState) => {
+                currentRoom = roomState;
+                updateUI(roomState);
+            });
+            
+            socket.on('roundStarted', (data) => {
+                updateRoomStatus('active');
+                document.getElementById('start-quiz-btn').disabled = true;
+                document.getElementById('next-question-btn').disabled = false;
+                document.getElementById('show-leaderboard-btn').disabled = false;
+                
+                showNotification('Quiz started!', 'success');
+                updateQuestionPreview(data.question, data.idx);
+            });
+            
+            socket.on('questionShown', (data) => {
+                updateQuestionPreview(data.question, data.idx);
+            });
+            
+            socket.on('questionChanged', (data) => {
+                updateQuestionPreview(data.question, data.idx);
+            });
+            
+            socket.on('roundEnded', () => {
+                updateRoomStatus('ended');
+                document.getElementById('next-question-btn').disabled = true;
+                showNotification('Quiz completed!', 'success');
+            });
+            
+            socket.on('playerAnsweredLive', (data) => {
+                showNotification(`${data.name} answered!`, 'info');
+            });
+            
+            socket.on('scoresUpdated', (data) => {
+                updateLeaderboard(data.players);
+            });
+            
+            socket.on('errorRoom', () => {
+                showNotification('Error creating room. Please try again.', 'error');
+            });
+        }
+
+        function setupEventListeners() {
+            // Timer slider
+            const timerSlider = document.getElementById('timer-slider');
+            const timerValue = document.getElementById('timer-value');
+            
+            timerSlider.addEventListener('input', (e) => {
+                timerValue.textContent = e.target.value + 's';
+            });
+        }
+
+        function createRoom() {
+            socket.emit('createRoom');
+        }
+
+        function startQuiz() {
+            if (!roomCode) return;
+            socket.emit('startQuiz', { code: roomCode });
+        }
+
+        function nextQuestion() {
+            if (!roomCode) return;
+            socket.emit('nextQuestion', { code: roomCode });
+        }
+
+        function showLeaderboard() {
+            if (!roomCode) return;
+            socket.emit('showLeaderboard', { code: roomCode });
+        }
+
+        function updateSettings() {
+            if (!roomCode) return;
+            
+            const timer = document.getElementById('timer-slider').value;
+            const autoLeaderboard = document.getElementById('auto-leaderboard').checked;
+            
+            socket.emit('hostSetPrefs', {
+                code: roomCode,
+                timer: parseInt(timer),
+                autoLeaderboard: autoLeaderboard
+            });
+            
+            showNotification('Settings updated!', 'success');
+        }
+
+        function updateUI(roomState) {
+            // Update player count
+            const playerCount = Object.keys(roomState.players || {}).length;
+            document.getElementById('player-count').textContent = playerCount;
+            document.getElementById('players-count-badge').textContent = playerCount;
+            
+            // Update progress
+            const currentQ = roomState.currentQuestionIndex + 1;
+            document.getElementById('current-question').textContent = Math.max(0, currentQ);
+            
+            if (totalQuestions > 0) {
+                const progress = (currentQ / totalQuestions) * 100;
+                document.getElementById('progress-bar').style.width = progress + '%';
+            }
+            
+            // Update players list
+            updatePlayersList(roomState.players || {});
+            
+            // Update leaderboard
+            const playersArray = Object.values(roomState.players || {});
+            updateLeaderboard(playersArray);
+        }
+
+        function updatePlayersList(players) {
+            const playersList = document.getElementById('players-list');
+            
+            if (Object.keys(players).length === 0) {
+                playersList.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <div class="text-4xl mb-2">👻</div>
+                        <p>No players yet. Share the room code!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            playersList.innerHTML = '';
+            Object.values(players).forEach((player, index) => {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = 'leaderboard-item flex items-center justify-between p-4 bg-white/20 rounded-xl';
+                playerDiv.style.animationDelay = `${index * 0.1}s`;
+                
+                const avatar = player.avatar || player.name.charAt(0).toUpperCase();
+                
+                playerDiv.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="player-avatar">${avatar}</div>
+                        <div>
+                            <div class="font-semibold text-gray-800">${player.name}</div>
+                            <div class="text-sm text-gray-600">Score: ${player.score || 0}</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-gray-600">Accuracy</div>
+                        <div class="font-bold text-gray-800">${calculateAccuracy(player)}%</div>
+                    </div>
+                `;
+                
+                playersList.appendChild(playerDiv);
+            });
+        }
+
+        function updateLeaderboard(players) {
+            const leaderboardList = document.getElementById('leaderboard-list');
+            
+            if (!players || players.length === 0) {
+                leaderboardList.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <div class="text-4xl mb-2">🏁</div>
+                        <p>Start the quiz to see rankings!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Sort players by score
+            const sortedPlayers = players.sort((a, b) => (b.score || 0) - (a.score || 0));
+            
+            leaderboardList.innerHTML = '';
+            sortedPlayers.slice(0, 10).forEach((player, index) => {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = 'leaderboard-item flex items-center justify-between p-4 bg-white/20 rounded-xl';
+                playerDiv.style.animationDelay = `${index * 0.1}s`;
+                
+                let rankIcon = '';
+                if (index === 0) rankIcon = '🥇';
+                else if (index === 1) rankIcon = '🥈';
+                else if (index === 2) rankIcon = '🥉';
+                else rankIcon = `#${index + 1}`;
+                
+                const avatar = player.avatar || player.name.charAt(0).toUpperCase();
+                
+                playerDiv.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="text-2xl">${rankIcon}</div>
+                        <div class="player-avatar">${avatar}</div>
+                        <div>
+                            <div class="font-semibold text-gray-800">${player.name}</div>
+                            <div class="text-sm text-gray-600">${calculateAccuracy(player)}% accuracy</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-gray-800">${player.score || 0}</div>
+                        <div class="text-sm text-gray-600">points</div>
+                    </div>
+                `;
+                
+                leaderboardList.appendChild(playerDiv);
+            });
+        }
+
+        function updateQuestionPreview(question, index) {
+            if (!question) return;
+            
+            document.getElementById('question-preview-card').style.display = 'block';
+            document.getElementById('preview-question-text').textContent = 
+                `Q${index + 1}: ${question.question}`;
+            
+            const optionsContainer = document.getElementById('preview-options');
+            optionsContainer.innerHTML = '';
+            
+            question.options.forEach((option, i) => {
+                const optionDiv = document.createElement('div');
+                optionDiv.className = `p-3 rounded-xl ${i === question.correct ? 'bg-green-200 border-2 border-green-400' : 'bg-white/20'}`;
+                optionDiv.innerHTML = `
+                    <div class="font-medium text-gray-800">${String.fromCharCode(65 + i)}. ${option}</div>
+                    ${i === question.correct ? '<div class="text-sm text-green-700 font-semibold">✅ Correct Answer</div>' : ''}
+                `;
+                optionsContainer.appendChild(optionDiv);
+            });
+        }
+
+        function toggleQuestionPreview() {
+            const preview = document.getElementById('question-preview');
+            preview.classList.toggle('expanded');
+        }
+
+        function calculateAccuracy(player) {
+            if (!player.totalAnswers || player.totalAnswers === 0) return 0;
+            return Math.round((player.correctAnswers || 0) / player.totalAnswers * 100);
+        }
+
+        function updateRoomStatus(status) {
+            const indicator = document.getElementById('room-status-indicator');
+            const text = document.getElementById('room-status-text');
+            
+            indicator.className = `status-indicator status-${status}`;
+            
+            switch(status) {
+                case 'active':
+                    text.textContent = 'Active';
+                    break;
+                case 'waiting':
+                    text.textContent = 'Waiting';
+                    break;
+                case 'ended':
+                    text.textContent = 'Ended';
+                    break;
+            }
+        }
+
+        function copyRoomCode() {
+            if (!roomCode) return;
+            
+            navigator.clipboard.writeText(roomCode).then(() => {
+                showNotification('Room code copied!', 'success');
+            }).catch(() => {
+                // Fallback
+                const textArea = document.createElement('textarea');
+                textArea.value = roomCode;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showNotification('Room code copied!', 'success');
+            });
+        }
+
+        function refreshLeaderboard() {
+            if (currentRoom) {
+                const playersArray = Object.values(currentRoom.players || {});
+                updateLeaderboard(playersArray);
+            }
+        }
+
+        function goHome() {
+            window.location.href = '/';
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-20 right-4 z-50 p-4 rounded-2xl font-medium transform transition-all duration-300 translate-x-full`;
+            
+            switch(type) {
+                case 'success':
+                    notification.className += ' bg-green-100 text-green-800 border border-green-200';
+                    break;
+                case 'error':
+                    notification.className += ' bg-red-100 text-red-800 border border-red-200';
+                    break;
+                default:
+                    notification.className += ' bg-blue-100 text-blue-800 border border-blue-200';
+            }
+            
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.classList.remove('translate-x-full'), 100);
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

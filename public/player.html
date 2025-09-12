@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Player - QuizMaster Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pastel-pink: #FFB3D9;
+            --pastel-blue: #B3D9FF;
+            --pastel-green: #B3FFD9;
+            --pastel-yellow: #FFD9B3;
+            --pastel-purple: #D9B3FF;
+            --pastel-coral: #FFB3B3;
+        }
+        
+        * { font-family: 'Poppins', sans-serif; }
+        
+        body {
+            background: linear-gradient(135deg, 
+                var(--pastel-blue) 0%, 
+                var(--pastel-green) 50%, 
+                var(--pastel-yellow) 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 18s ease infinite;
+            min-height: 100vh;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .answer-button {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .answer-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+        
+        .answer-button.selected {
+            background: linear-gradient(45deg, var(--pastel-purple), var(--pastel-pink));
+            color: white;
+            transform: scale(1.05);
+        }
+        
+        .answer-button.correct {
+            background: linear-gradient(45deg, var(--pastel-green), #4ade80);
+            animation: correctPulse 0.6s ease-out;
+        }
+        
+        .answer-button.incorrect {
+            background: linear-gradient(45deg, var(--pastel-coral), #f87171);
+            animation: incorrectShake 0.6s ease-out;
+        }
+        
+        @keyframes correctPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1.05); }
+        }
+        
+        @keyframes incorrectShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        .timer-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, var(--pastel-green), var(--pastel-yellow), var(--pastel-coral));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            animation: timerSpin 1s linear infinite;
+        }
+        
+        .timer-circle.warning {
+            animation: timerPulse 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes timerSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes timerPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .timer-inner {
+            width: 100px;
+            height: 100px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #374151;
+        }
+        
+        .score-animation {
+            animation: scoreUp 0.8s ease-out;
+        }
+        
+        @keyframes scoreUp {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        .waiting-animation {
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% { transform: translateY(0); }
+            40%, 43% { transform: translateY(-30px); }
+            70% { transform: translateY(-15px); }
+        }
+        
+        .player-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--pastel-pink), var(--pastel-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            border: 3px solid white;
+        }
+        
+        .rank-badge {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #92400e;
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        
+        .question-enter {
+            animation: questionSlide 0.8s ease-out;
+        }
+        
+        @keyframes questionSlide {
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .join-form {
+            animation: formBounce 1s ease-out;
+        }
+        
+        @keyframes formBounce {
+            0% { opacity: 0; transform: scale(0.8) translateY(50px); }
+            60% { transform: scale(1.05) translateY(-10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="glass-card mx-4 mt-4 rounded-3xl p-4">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <div class="text-3xl">🎯</div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">Player Dashboard</h1>
+                    <p class="text-gray-600" id="room-info">Ready to join a quiz!</p>
+                </div>
+            </div>
+            <button onclick="goHome()" class="px-4 py-2 bg-white/30 hover:bg-white/40 rounded-xl text-gray-700 font-medium transition-all">
+                🏠 Home
+            </button>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-6">
+        <!-- Join Form -->
+        <div id="join-section" class="max-w-md mx-auto">
+            <div class="glass-card rounded-3xl p-8 text-center join-form">
+                <div class="text-6xl mb-6 waiting-animation">🚀</div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Join Quiz</h2>
+                
+                <div class="space-y-4">
+                    <input type="text" id="player-name" placeholder="Enter your name" 
+                           class="w-full px-6 py-4 rounded-2xl border-2 border-white/30 bg-white/20 backdrop-blur-sm text-gray-800 placeholder-gray-600 font-medium text-center text-lg focus:outline-none focus:border-purple-400">
+                    
+                    <input type="text" id="room-code" placeholder="Room Code (e.g., ABCD)" 
+                           class="w-full px-6 py-4 rounded-2xl border-2 border-white/30 bg-white/20 backdrop-blur-sm text-gray-800 placeholder-gray-600 font-medium text-center text-lg focus:outline-none focus:border-purple-400"
+                           maxlength="6">
+                    
+                    <button onclick="joinRoom()" 
+                            class="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-4 px-6 rounded-2xl text-lg transition-all transform hover:scale-105">
+                        🎯 Join Quiz
+                    </button>
+                </div>
+                
+                <div class="mt-6 text-sm text-gray-600">
+                    <p>💡 Get the room code from your quiz host</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Interface -->
+        <div id="game-section" class="hidden">
+            <!-- Player Info Bar -->
+            <div class="glass-card rounded-3xl p-6 mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                        <div class="player-avatar" id="player-avatar">P</div>
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800" id="player-name-display">Player</h3>
+                            <p class="text-gray-600">Room: <span id="room-code-display" class="font-mono font-bold">----</span></p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-6">
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-purple-600 score-animation" id="player-score">0</div>
+                            <div class="text-gray-600 text-sm">Score</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="rank-badge" id="player-rank">#-</div>
+                            <div class="text-gray-600 text-sm mt-1">Rank</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-lg font-bold text-gray-700" id="accuracy">0%</div>
+                            <div class="text-gray-600 text-sm">Accuracy</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Waiting Screen -->
+            <div id="waiting-screen" class="text-center">
+                <div class="glass-card rounded-3xl p-12 max-w-2xl mx-auto">
+                    <div class="text-8xl mb-6 waiting-animation">⏳</div>
+                    <h2 class="text-4xl font-bold text-gray-800 mb-4">Waiting for Quiz to Start</h2>
+                    <p class="text-xl text-gray-600 mb-8">Get ready! The host will start the quiz soon.</p>
+                    
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <div class="text-center">
+                            <div class="text-3xl mb-2">👥</div>
+                            <div class="text-2xl font-bold text-gray-800" id="waiting-players">0</div>
+                            <div class="text-gray-600">Players</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl mb-2">❓</div>
+                            <div class="text-2xl font-bold text-gray-800" id="waiting-questions">0</div>
+                            <div class="text-gray-600">Questions</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl mb-2">⏱️</div>
+                            <div class="text-2xl font-bold text-gray-800" id="waiting-timer">--</div>
+                            <div class="text-gray-600">Timer</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question Screen -->
+            <div id="question-screen" class="hidden">
+                <!-- Timer -->
+                <div class="text-center mb-8">
+                    <div class="timer-circle mx-auto" id="timer-circle">
+                        <div class="timer-inner" id="timer-display">15</div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="text-lg text-gray-700">Question <span id="question-number">1</span> of <span id="total-questions-display">10</span></div>
+                        <div class="w-full bg-white/30 rounded-full h-2 mt-2 max-w-md mx-auto">
+                            <div class="bg-gradient-to-r from-purple-400 to-pink-400 h-2 rounded-full transition-all duration-500" 
+                                 id="question-progress" style="width: 10%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question -->
+                <div class="glass-card rounded-3xl p-8 mb-8 question-enter" id="question-card">
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800 text-center mb-8" id="question-text">
+                        Question will appear here...
+                    </h2>
+                    
+                    <div class="grid md:grid-cols-2 gap-4" id="answer-options">
+                        <!-- Answer options will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Status -->
+                <div class="glass-card rounded-2xl p-4 text-center max-w-md mx-auto">
+                    <div class="text-lg font-medium text-gray-800" id="answer-status">
+                        Choose your answer above ☝️
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Screen -->
+            <div id="results-screen" class="hidden text-center">
+                <div class="glass-card rounded-3xl p-12 max-w-2xl mx-auto">
+                    <div class="text-8xl mb-6">🏆</div>
+                    <h2 class="text-4xl font-bold text-gray-800 mb-4">Quiz Complete!</h2>
+                    <p class="text-xl text-gray-600 mb-8">Great job! Here are your final results:</p>
+                    
+                    <div class="grid md:grid-cols-3 gap-6 mb-8">
+                        <div class="text-center">
+                            <div class="text-4xl font-bold text-purple-600" id="final-score">0</div>
+                            <div class="text-gray-600">Final Score</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-4xl font-bold text-green-600" id="final-rank">#-</div>
+                            <div class="text-gray-600">Final Rank</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-4xl font-bold text-blue-600" id="final-accuracy">0%</div>
+                            <div class="text-gray-600">Accuracy</div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="playAgain()" 
+                            class="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-bold py-4 px-8 rounded-2xl text-lg transition-all transform hover:scale-105">
+                        🔄 Play Again
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let playerId = null;
+        let roomCode = null;
+        let currentQuestion = null;
+        let playerStats = {
+            score: 0,
+            correctAnswers: 0,
+            totalAnswers: 0,
+            rank: 0
+        };
+        let timer = 0;
+        let timerInterval = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initSocket();
+            setupEventListeners();
+            
+            // Check for quick join code
+            const quickJoinCode = localStorage.getItem('quickJoinCode');
+            if (quickJoinCode) {
+                document.getElementById('room-code').value = quickJoinCode;
+                localStorage.removeItem('quickJoinCode');
+            }
+        });
+
+        function initSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('🟢 Connected to server');
+            });
+            
+            socket.on('joinedAck', (data) => {
+                playerId = data.id;
+                roomCode = data.code;
+                
+                document.getElementById('room-code-display').textContent = roomCode;
+                document.getElementById('room-info').textContent = `Connected to room ${roomCode}`;
+                
+                showGameSection();
+                showNotification('Successfully joined the quiz!', 'success');
+            });
+            
+            socket.on('joinRejected', (data) => {
+                showNotification(data?.message || 'Failed to join room. Please check the room code.', 'error');
+            });
+            
+            socket.on('state', (roomState) => {
+                updateGameState(roomState);
+            });
+            
+            socket.on('roundStarted', (data) => {
+                showQuestionScreen();
+                if (data.question) {
+                    displayQuestion(data.question, data.idx);
+                }
+            });
+            
+            socket.on('questionShown', (data) => {
+                displayQuestion(data.question, data.idx);
+                startTimer(data.timer || 15);
+            });
+            
+            socket.on('questionChanged', (data) => {
+                displayQuestion(data.question, data.idx);
+                startTimer(data.timer || 15);
+                resetAnswerButtons();
+            });
+            
+            socket.on('answerResults', (data) => {
+                showAnswerResults(data.perPlayer);
+            });
+            
+            socket.on('scoresUpdated', (data) => {
+                updatePlayerStats(data.players);
+            });
+            
+            socket.on('roundEnded', () => {
+                showResultsScreen();
+            });
+            
+            socket.on('answerRejected', () => {
+                showNotification('Answer rejected. Quiz may have ended.', 'error');
+            });
+        }
+
+        function setupEventListeners() {
+            // Enter key handlers
+            document.getElementById('player-name').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('room-code').focus();
+                }
+            });
+            
+            document.getElementById('room-code').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    joinRoom();
+                }
+            });
+            
+            // Auto-uppercase room codes
+            document.getElementById('room-code').addEventListener('input', (e) => {
+                e.target.value = e.target.value.toUpperCase();
+            });
+        }
+
+        function joinRoom() {
+            const name = document.getElementById('player-name').value.trim();
+            const code = document.getElementById('room-code').value.trim().toUpperCase();
+            
+            if (!name) {
+                showNotification('Please enter your name!', 'error');
+                document.getElementById('player-name').focus();
+                return;
+            }
+            
+            if (!code) {
+                showNotification('Please enter a room code!', 'error');
+                document.getElementById('room-code').focus();
+                return;
+            }
+            
+            if (code.length < 3) {
+                showNotification('Room code too short!', 'error');
+                return;
+            }
+            
+            // Set player avatar
+            const avatar = name.charAt(0).toUpperCase();
+            document.getElementById('player-avatar').textContent = avatar;
+            document.getElementById('player-name-display').textContent = name;
+            
+            // Join room
+            socket.emit('playerJoin', {
+                code: code,
+                name: name,
+                avatar: avatar
+            });
+        }
+
+        function showGameSection() {
+            document.getElementById('join-section').classList.add('hidden');
+            document.getElementById('game-section').classList.remove('hidden');
+        }
+
+        function showQuestionScreen() {
+            document.getElementById('waiting-screen').classList.add('hidden');
+            document.getElementById('question-screen').classList.remove('hidden');
+            document.getElementById('results-screen').classList.add('hidden');
+        }
+
+        function showResultsScreen() {
+            document.getElementById('waiting-screen').classList.add('hidden');
+            document.getElementById('question-screen').classList.add('hidden');
+            document.getElementById('results-screen').classList.remove('hidden');
+            
+            // Update final stats
+            document.getElementById('final-score').textContent = playerStats.score;
+            document.getElementById('final-rank').textContent = `#${playerStats.rank || '-'}`;
+            document.getElementById('final-accuracy').textContent = calculateAccuracy() + '%';
+        }
+
+        function displayQuestion(question, index) {
+            if (!question) return;
+            
+            currentQuestion = question;
+            
+            // Update question info
+            document.getElementById('question-number').textContent = index + 1;
+            document.getElementById('question-text').textContent = question.question;
+            
+            // Update progress
+            const progress = ((index + 1) / (question.totalQuestions || 10)) * 100;
+            document.getElementById('question-progress').style.width = progress + '%';
+            
+            // Create answer options
+            const optionsContainer = document.getElementById('answer-options');
+            optionsContainer.innerHTML = '';
+            
+            question.options.forEach((option, i) => {
+                const button = document.createElement('button');
+                button.className = 'answer-button w-full p-6 bg-white/20 hover:bg-white/30 border-2 border-white/30 rounded-2xl text-left font-medium text-gray-800 transition-all';
+                button.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <div class="w-8 h-8 bg-white/50 rounded-full flex items-center justify-center font-bold">
+                            ${String.fromCharCode(65 + i)}
+                        </div>
+                        <div class="text-lg">${option}</div>
+                    </div>
+                `;
+                button.onclick = () => selectAnswer(i, button);
+                optionsContainer.appendChild(button);
+            });
+            
+            // Add question enter animation
+            document.getElementById('question-card').classList.add('question-enter');
+            setTimeout(() => {
+                document.getElementById('question-card').classList.remove('question-enter');
+            }, 800);
+        }
+
+        function selectAnswer(answerIndex, buttonElement) {
+            // Remove previous selections
+            document.querySelectorAll('.answer-button').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            // Mark as selected
+            buttonElement.classList.add('selected');
+            
+            // Submit answer
+            socket.emit('submitAnswer', {
+                code: roomCode,
+                answer: answerIndex
+            });
+            
+            // Update status
+            document.getElementById('answer-status').textContent = 'Answer submitted! ✅';
+            
+            // Disable all buttons
+            document.querySelectorAll('.answer-button').forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.7';
+            });
+        }
+
+        function resetAnswerButtons() {
+            document.querySelectorAll('.answer-button').forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.classList.remove('selected', 'correct', 'incorrect');
+            });
+            
+            document.getElementById('answer-status').textContent = 'Choose your answer above ☝️';
+        }
+
+        function showAnswerResults(perPlayer) {
+            if (!currentQuestion || !perPlayer[playerId]) return;
+            
+            const myResult = perPlayer[playerId];
+            const correctIndex = currentQuestion.correct;
+            
+            // Update answer buttons
+            document.querySelectorAll('.answer-button').forEach((btn, index) => {
+                if (index === correctIndex) {
+                    btn.classList.add('correct');
+                } else if (index === myResult.answer && !myResult.correct) {
+                    btn.classList.add('incorrect');
+                }
+            });
+            
+            // Update status
+            if (myResult.correct) {
+                document.getElementById('answer-status').innerHTML = `
+                    <div class="text-green-600 font-bold">✅ Correct! +${myResult.points} points</div>
+                `;
+                playerStats.score += myResult.points;
+                playerStats.correctAnswers++;
+            } else {
+                document.getElementById('answer-status').innerHTML = `
+                    <div class="text-red-600 font-bold">❌ Wrong answer</div>
+                `;
+            }
+            
+            playerStats.totalAnswers++;
+            updatePlayerDisplay();
+        }
+
+        function updateGameState(roomState) {
+            // Update waiting screen info
+            const playerCount = Object.keys(roomState.players || {}).length;
+            document.getElementById('waiting-players').textContent = playerCount;
+            document.getElementById('waiting-questions').textContent = roomState.totalQuestions || 0;
+            document.getElementById('waiting-timer').textContent = roomState.autoQuestionTimer || '--';
+            document.getElementById('total-questions-display').textContent = roomState.totalQuestions || 0;
+        }
+
+        function updatePlayerStats(players) {
+            if (!players || !playerId) return;
+            
+            // Sort players by score to get rank
+            const sortedPlayers = players.sort((a, b) => (b.score || 0) - (a.score || 0));
+            const myIndex = sortedPlayers.findIndex(p => p.id === playerId);
+            
+            if (myIndex !== -1) {
+                playerStats.rank = myIndex + 1;
+                const myPlayer = sortedPlayers[myIndex];
+                playerStats.score = myPlayer.score || 0;
+            }
+            
+            updatePlayerDisplay();
+        }
+
+        function updatePlayerDisplay() {
+            document.getElementById('player-score').textContent = playerStats.score;
+            document.getElementById('player-rank').textContent = `#${playerStats.rank || '-'}`;
+            document.getElementById('accuracy').textContent = calculateAccuracy() + '%';
+            
+            // Add score animation
+            document.getElementById('player-score').classList.add('score-animation');
+            setTimeout(() => {
+                document.getElementById('player-score').classList.remove('score-animation');
+            }, 800);
+        }
+
+        function startTimer(seconds) {
+            clearInterval(timerInterval);
+            timer = seconds;
+            
+            const timerDisplay = document.getElementById('timer-display');
+            const timerCircle = document.getElementById('timer-circle');
+            
+            timerDisplay.textContent = timer;
+            
+            timerInterval = setInterval(() => {
+                timer--;
+                timerDisplay.textContent = timer;
+                
+                if (timer <= 3) {
+                    timerCircle.classList.add('warning');
+                } else {
+                    timerCircle.classList.remove('warning');
+                }
+                
+                if (timer <= 0) {
+                    clearInterval(timerInterval);
+                    timerCircle.classList.remove('warning');
+                }
+            }, 1000);
+        }
+
+        function calculateAccuracy() {
+            if (playerStats.totalAnswers === 0) return 0;
+            return Math.round((playerStats.correctAnswers / playerStats.totalAnswers) * 100);
+        }
+
+        function playAgain() {
+            // Reset stats
+            playerStats = {
+                score: 0,
+                correctAnswers: 0,
+                totalAnswers: 0,
+                rank: 0
+            };
+            
+            // Show join section
+            document.getElementById('game-section').classList.add('hidden');
+            document.getElementById('join-section').classList.remove('hidden');
+            
+            // Clear form
+            document.getElementById('player-name').value = '';
+            document.getElementById('room-code').value = '';
+            
+            // Reset room info
+            document.getElementById('room-info').textContent = 'Ready to join a quiz!';
+        }
+
+        function goHome() {
+            window.location.href = '/';
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-20 right-4 z-50 p-4 rounded-2xl font-medium transform transition-all duration-300 translate-x-full`;
+            
+            switch(type) {
+                case 'success':
+                    notification.className += ' bg-green-100 text-green-800 border border-green-200';
+                    break;
+                case 'error':
+                    notification.className += ' bg-red-100 text-red-800 border border-red-200';
+                    break;
+                default:
+                    notification.className += ' bg-blue-100 text-blue-800 border border-blue-200';
+            }
+            
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.classList.remove('translate-x-full'), 100);
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

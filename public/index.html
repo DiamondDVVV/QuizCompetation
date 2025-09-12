@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 QuizMaster Pro - Ultimate Quiz Experience</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pastel-pink: #FFB3D9;
+            --pastel-blue: #B3D9FF;
+            --pastel-green: #B3FFD9;
+            --pastel-yellow: #FFD9B3;
+            --pastel-purple: #D9B3FF;
+            --pastel-coral: #FFB3B3;
+        }
+        
+        * { font-family: 'Poppins', sans-serif; }
+        
+        body {
+            background: linear-gradient(135deg, 
+                var(--pastel-pink) 0%, 
+                var(--pastel-blue) 25%, 
+                var(--pastel-green) 50%, 
+                var(--pastel-yellow) 75%, 
+                var(--pastel-purple) 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            min-height: 100vh;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .floating-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .bounce-in {
+            animation: bounceIn 1s ease-out;
+        }
+        
+        @keyframes bounceIn {
+            0% { opacity: 0; transform: scale(0.3); }
+            50% { opacity: 1; transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        .glow-button {
+            background: linear-gradient(45deg, var(--pastel-pink), var(--pastel-purple));
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .glow-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .sparkle {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .sparkle::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: sparkle 3s linear infinite;
+        }
+        
+        @keyframes sparkle {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+        
+        .connection-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .status-connected { background: linear-gradient(45deg, var(--pastel-green), #4ade80); color: #065f46; }
+        .status-connecting { background: linear-gradient(45deg, var(--pastel-yellow), #fbbf24); color: #92400e; }
+        .status-disconnected { background: linear-gradient(45deg, var(--pastel-coral), #f87171); color: #7f1d1d; }
+        
+        .team-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .team-card:hover {
+            transform: translateY(-10px) scale(1.02);
+        }
+        
+        .stats-counter {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(45deg, var(--pastel-purple), var(--pastel-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+<body>
+    <!-- Connection Status -->
+    <div id="connection-status" class="connection-indicator status-connecting">
+        <span id="status-icon">🔄</span>
+        <span id="status-text">Connecting...</span>
+    </div>
+
+    <!-- Main Container -->
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="glass-card mx-4 mt-4 rounded-3xl p-6 bounce-in">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                    <div class="text-5xl floating-animation">🎯</div>
+                    <div>
+                        <h1 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                            QuizMaster Pro
+                        </h1>
+                        <p class="text-gray-600 font-medium">Ultimate Quiz Experience</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-6">
+                    <div class="text-center">
+                        <div class="stats-counter" id="total-rooms">0</div>
+                        <div class="text-sm text-gray-600 font-medium">Active Rooms</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="stats-counter" id="total-players">0</div>
+                        <div class="text-sm text-gray-600 font-medium">Players Online</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-lg font-bold text-gray-700" id="current-time"></div>
+                        <div class="text-sm text-gray-600">Current Time</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 container mx-auto px-4 py-8">
+            <!-- Hero Section -->
+            <div class="text-center mb-12 bounce-in" style="animation-delay: 0.2s;">
+                <h2 class="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
+                    Ready to Quiz? 🚀
+                </h2>
+                <p class="text-xl md:text-2xl text-gray-700 mb-8 max-w-3xl mx-auto">
+                    Join the ultimate quiz experience with real-time multiplayer action, 
+                    beautiful themes, and competitive scoring!
+                </p>
+            </div>
+
+            <!-- Action Cards -->
+            <div class="grid md:grid-cols-3 gap-8 mb-12">
+                <!-- Host Card -->
+                <div class="team-card glass-card rounded-3xl p-8 text-center sparkle bounce-in" style="animation-delay: 0.4s;">
+                    <div class="text-6xl mb-6 floating-animation">👑</div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Host a Quiz</h3>
+                    <p class="text-gray-600 mb-6">Create and control your own quiz session with advanced features</p>
+                    <button onclick="goToHost()" class="glow-button text-white font-bold py-4 px-8 rounded-2xl w-full text-lg">
+                        Start Hosting 🎮
+                    </button>
+                </div>
+
+                <!-- Player Card -->
+                <div class="team-card glass-card rounded-3xl p-8 text-center sparkle bounce-in" style="animation-delay: 0.6s;">
+                    <div class="text-6xl mb-6 floating-animation" style="animation-delay: 1s;">🎯</div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Join Quiz</h3>
+                    <p class="text-gray-600 mb-6">Enter a room code and compete with friends in real-time</p>
+                    <button onclick="goToPlayer()" class="glow-button text-white font-bold py-4 px-8 rounded-2xl w-full text-lg">
+                        Join Game 🚀
+                    </button>
+                </div>
+
+                <!-- Projector Card -->
+                <div class="team-card glass-card rounded-3xl p-8 text-center sparkle bounce-in" style="animation-delay: 0.8s;">
+                    <div class="text-6xl mb-6 floating-animation" style="animation-delay: 2s;">📺</div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Projector View</h3>
+                    <p class="text-gray-600 mb-6">Display quiz for audience with live scores and leaderboards</p>
+                    <button onclick="goToProjector()" class="glow-button text-white font-bold py-4 px-8 rounded-2xl w-full text-lg">
+                        Display Mode 📊
+                    </button>
+                </div>
+            </div>
+
+            <!-- Features Section -->
+            <div class="glass-card rounded-3xl p-8 mb-8 bounce-in" style="animation-delay: 1s;">
+                <h3 class="text-3xl font-bold text-center text-gray-800 mb-8">✨ Amazing Features</h3>
+                <div class="grid md:grid-cols-4 gap-6">
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">⚡</div>
+                        <h4 class="font-bold text-gray-800 mb-2">Real-time Sync</h4>
+                        <p class="text-gray-600 text-sm">Instant updates across all devices</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">🏆</div>
+                        <h4 class="font-bold text-gray-800 mb-2">Live Leaderboards</h4>
+                        <p class="text-gray-600 text-sm">See rankings update in real-time</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">🎨</div>
+                        <h4 class="font-bold text-gray-800 mb-2">Beautiful Themes</h4>
+                        <p class="text-gray-600 text-sm">Stunning pastel design system</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">📱</div>
+                        <h4 class="font-bold text-gray-800 mb-2">Mobile Ready</h4>
+                        <p class="text-gray-600 text-sm">Perfect on any device</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Join Section -->
+            <div class="glass-card rounded-3xl p-8 text-center bounce-in" style="animation-delay: 1.2s;">
+                <h3 class="text-2xl font-bold text-gray-800 mb-6">🚀 Quick Join</h3>
+                <div class="flex flex-col md:flex-row gap-4 max-w-md mx-auto">
+                    <input 
+                        type="text" 
+                        id="quick-room-code" 
+                        placeholder="Enter Room Code" 
+                        class="flex-1 px-6 py-4 rounded-2xl border-2 border-white/30 bg-white/20 backdrop-blur-sm text-gray-800 placeholder-gray-600 font-medium text-center text-lg"
+                        maxlength="6"
+                    >
+                    <button 
+                        onclick="quickJoin()" 
+                        class="glow-button text-white font-bold py-4 px-8 rounded-2xl text-lg whitespace-nowrap"
+                    >
+                        Join Now! 🎯
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="glass-card mx-4 mb-4 rounded-3xl p-6 text-center">
+            <p class="text-gray-600">
+                Made with ❤️ for amazing quiz experiences • 
+                <span class="font-semibold">QuizMaster Pro</span> • 
+                Real-time multiplayer quiz platform
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        let socket;
+        let connectionStatus = 'connecting';
+
+        // Initialize Socket Connection
+        function initSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                updateConnectionStatus('connected');
+                console.log('🟢 Connected to server');
+            });
+            
+            socket.on('disconnect', () => {
+                updateConnectionStatus('disconnected');
+                console.log('🔴 Disconnected from server');
+            });
+            
+            socket.on('connect_error', () => {
+                updateConnectionStatus('disconnected');
+                console.log('❌ Connection error');
+            });
+        }
+
+        // Update connection status
+        function updateConnectionStatus(status) {
+            connectionStatus = status;
+            const statusEl = document.getElementById('connection-status');
+            const iconEl = document.getElementById('status-icon');
+            const textEl = document.getElementById('status-text');
+            
+            statusEl.className = `connection-indicator status-${status}`;
+            
+            switch(status) {
+                case 'connected':
+                    iconEl.textContent = '🟢';
+                    textEl.textContent = 'Connected';
+                    break;
+                case 'disconnected':
+                    iconEl.textContent = '🔴';
+                    textEl.textContent = 'Disconnected';
+                    break;
+                case 'connecting':
+                    iconEl.textContent = '🔄';
+                    textEl.textContent = 'Connecting...';
+                    break;
+            }
+        }
+
+        // Navigation functions
+        function goToHost() {
+            window.location.href = '/host.html';
+        }
+
+        function goToPlayer() {
+            window.location.href = '/player.html';
+        }
+
+        function goToProjector() {
+            window.location.href = '/projector.html';
+        }
+
+        // Quick join functionality
+        function quickJoin() {
+            const code = document.getElementById('quick-room-code').value.trim().toUpperCase();
+            if (!code) {
+                showNotification('Please enter a room code!', 'error');
+                return;
+            }
+            
+            if (code.length < 3) {
+                showNotification('Room code too short!', 'error');
+                return;
+            }
+            
+            // Store code and redirect to player page
+            localStorage.setItem('quickJoinCode', code);
+            window.location.href = '/player.html';
+        }
+
+        // Update time display
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+        }
+
+        // Fetch and update stats
+        async function updateStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+                
+                document.getElementById('total-rooms').textContent = stats.activeRooms || 0;
+                document.getElementById('total-players').textContent = stats.totalPlayers || 0;
+            } catch (error) {
+                console.log('Stats not available');
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-20 right-4 z-50 p-4 rounded-2xl font-medium transform transition-all duration-300 translate-x-full`;
+            
+            if (type === 'error') {
+                notification.className += ' bg-red-100 text-red-800 border border-red-200';
+            } else {
+                notification.className += ' bg-green-100 text-green-800 border border-green-200';
+            }
+            
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.classList.remove('translate-x-full');
+            }, 100);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Handle Enter key in quick join
+        document.addEventListener('DOMContentLoaded', () => {
+            const quickJoinInput = document.getElementById('quick-room-code');
+            quickJoinInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    quickJoin();
+                }
+            });
+            
+            // Auto-uppercase room codes
+            quickJoinInput.addEventListener('input', (e) => {
+                e.target.value = e.target.value.toUpperCase();
+            });
+        });
+
+        // Initialize everything
+        document.addEventListener('DOMContentLoaded', () => {
+            initSocket();
+            updateTime();
+            updateStats();
+            
+            // Update time every second
+            setInterval(updateTime, 1000);
+            
+            // Update stats every 10 seconds
+            setInterval(updateStats, 10000);
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97e044598186a74f',t:'MTc1NzY4OTE1MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
