@@ -1,54 +1,79 @@
 {
   "questions": [
     {
+      "question": "Who is known as the “Flying Sikh of India”?",
+      "options": ["P. T. Usha", "Milkha Singh", "Usain Bolt", "Carl Lewis"],
+      "correct": 1
+    },
+    {
+      "question": "What is the study of plants called?",
+      "options": ["Botany", "Ecology", "Zoology", "Biology"],
+      "correct": 0
+    },
+    {
+      "question": "Which is the largest plateau in the world?",
+      "options": ["Colorado Plateau", "Deccan Plateau", "Tibetan Plateau", "Altiplano"],
+      "correct": 2
+    },
+    {
+      "question": "Who invented the telephone?",
+      "options": ["Nikola Tesla", "Alexander Graham Bell", "Thomas Edison", "Guglielmo Marconi"],
+      "correct": 1
+    },
+    {
+      "question": "Which is the largest ocean on Earth?",
+      "options": ["Atlantic Ocean", "Pacific Ocean", "Indian Ocean", "Arctic Ocean"],
+      "correct": 1
+    },
+    {
+      "question": "Name the first Indian woman to climb Mount Everest.",
+      "options": ["Bachendri Pal", "Arunima Sinha", "Premlata Agarwal", "Santosh Yadav"],
+      "correct": 0
+    },
+    {
+      "question": "What is the national game of Japan?",
+      "options": ["Karate", "Judo", "Sumo Wrestling", "Kendo"],
+      "correct": 2
+    },
+    {
+      "question": "Who is called the “Father of Computers”?",
+      "options": ["John von Neumann", "Steve Jobs", "Charles Babbage", "Alan Turing"],
+      "correct": 2
+    },
+    {
+      "question": "What is the currency of China?",
+      "options": ["Yuan/Renminbi", "Dollar", "Yen", "Won"],
+      "correct": 0
+    },
+    {
+      "question": "Which gas do plants absorb during photosynthesis?",
+      "options": ["Carbon Dioxide", "Hydrogen", "Oxygen", "Nitrogen"],
+      "correct": 0
+    },
+    {
       "question": "What is the capital of France?",
-      "options": ["London", "Berlin", "Paris", "Madrid"],
+      "options": ["London", "Paris", "Berlin", "Madrid"],
+      "correct": 1
+    },
+    {
+      "question": "Name the author of Ramayana.",
+      "options": ["Kalidasa", "Tulsidas", "Valmiki", "Veda Vyasa"],
       "correct": 2
     },
     {
-      "question": "Which planet is known as the Red Planet?",
-      "options": ["Venus", "Mars", "Jupiter", "Saturn"],
-      "correct": 1
-    },
-    {
-      "question": "What is 2 + 2?",
-      "options": ["3", "4", "5", "6"],
-      "correct": 1
-    },
-    {
-      "question": "Who painted the Mona Lisa?",
-      "options": ["Van Gogh", "Picasso", "Da Vinci", "Monet"],
+      "question": "Which river is called the “Sorrow of Bihar”?",
+      "options": ["Ganga River", "Yamuna River", "Kosi River", "Son River"],
       "correct": 2
     },
     {
-      "question": "What is the largest ocean on Earth?",
-      "options": ["Atlantic", "Indian", "Arctic", "Pacific"],
-      "correct": 3
+      "question": "Who discovered electricity with kite experiment?",
+      "options": ["Benjamin Franklin", "Michael Faraday", "Thomas Edison", "James Watt"],
+      "correct": 0
     },
     {
-      "question": "Which programming language is known for web development?",
-      "options": ["Python", "JavaScript", "C++", "Java"],
-      "correct": 1
-    },
-    {
-      "question": "What year did World War II end?",
-      "options": ["1944", "1945", "1946", "1947"],
-      "correct": 1
-    },
-    {
-      "question": "Which element has the chemical symbol 'O'?",
-      "options": ["Gold", "Silver", "Oxygen", "Iron"],
-      "correct": 2
-    },
-    {
-      "question": "What is the smallest country in the world?",
-      "options": ["Monaco", "Vatican City", "San Marino", "Liechtenstein"],
-      "correct": 1
-    },
-    {
-      "question": "Which animal is known as the King of the Jungle?",
-      "options": ["Tiger", "Elephant", "Lion", "Leopard"],
-      "correct": 2
+      "question": "Which metal is liquid at room temperature?",
+      "options": ["Mercury", "Lead", "Gallium", "Sodium"],
+      "correct": 0
     }
   ]
 }
