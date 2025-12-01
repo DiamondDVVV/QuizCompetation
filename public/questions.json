@@ -1,7 +1,7 @@
 {
   "questions": [
     {
-      "question": "Who is known as the “Flying Sikh of India”?",
+      "question": "Who is known as the “Flying Sikh of India.”?",
       "options": ["P. T. Usha", "Milkha Singh", "Usain Bolt", "Carl Lewis"],
       "correct": 1
     },
@@ -77,3 +77,4 @@
     }
   ]
 }
+
